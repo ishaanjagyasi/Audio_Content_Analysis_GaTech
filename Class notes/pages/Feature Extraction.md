@@ -1,0 +1,23 @@
+# Low Level Features
+	- Directly derived from the signal (they do relate back to the musical properties in some or the other ways) -- Often Simple
+		- MFCC
+		- Zero Crossings Rate (ZCR)
+		- Energy
+		- RMS
+	- Extracted from time domain representation or Frequency Domain Representation
+	- [[Instantaneous Feature]] - A single value summarising particular feature value over one single frame of audio - A frame of audio can be defined by you depending on your task
+-
+- ## Energy
+	- Volume/Loudness
+	- Perceived loudness
+	- Total Magnitude of the Signal - How Loud a Signal is
+		- $\sum_{i=1}^{n} |x(i)|^2$
+	- Energy - Cumulative power, more susceptible to peaks -
+	- RMS - Follows the envelope of the audio smoothly
+	-
+- ## ZCR
+	- High ZCR - High frequency, crosses zero more
+	- Raw ZCR - gives total zcr count
+	- Typical normal ZCR - Normalised by dividing with frame length
+		- helps you to calculate ZCR regardless of frame length
+-
