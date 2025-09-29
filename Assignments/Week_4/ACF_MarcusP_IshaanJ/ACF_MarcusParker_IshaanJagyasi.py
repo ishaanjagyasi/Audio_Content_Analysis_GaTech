@@ -152,7 +152,7 @@ plt.grid(True, linestyle='--', alpha=0.6)
 plt.show()
 
 # Plotting for our custom sample
-estimated_frequencies = [estimate_f0(frame, sr_3, 120, 2000, 0.7) for frame in data_3]
+estimated_frequencies = [estimate_f0(frame, sr_3, 120, 2000, 0.2) for frame in data_3]
 
 plt.figure(figsize=(15, 7))
 plt.scatter(times_3, estimated_frequencies, s=10)
