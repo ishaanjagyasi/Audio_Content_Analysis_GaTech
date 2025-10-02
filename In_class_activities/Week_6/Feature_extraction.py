@@ -1,10 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
-from scipy.fft import fft, fftfreq
 import librosa
 import os
-import math
 import pandas as pd
 from audio_blocking_reference import block_audio
 from sklearn.neighbors import KNeighborsClassifier
@@ -204,7 +202,7 @@ class AudioFeatureExtractor:
 
         return zcr
 
-################################ MEL FILTERBANK CALCULATION ###################################
+################################ MEL FILTERBANK CALCULATION ################################### (helper for MFCC extraction)
 
     def mel_filterbank(self, n_filters=13, fmin=0, fmax=None):
         if fmax is None:
@@ -386,9 +384,6 @@ class AudioFeatureExtractor:
                         except Exception as e:
                             print(f"Warning: Could not parse label from {file}: {e}")
                             label = "unknown"
-                    else:
-                        # Fallback: Extract label from folder name (for your FourInstrumentFiles)
-                        label = os.path.basename(root)
 
                     # Extract features
                     feature_vector = self.extract_features(filepath)
@@ -409,7 +404,7 @@ class AudioFeatureExtractor:
         
     
     
-######################################### COMPUTE CORRELATION MATRIX #########################################
+######################################### COMPUTE CORRELATION MATRIX ######################################### (also plots the highest and lowest correlations)
 
     def compute_correlation_matrix(self, normalized_matrix, feature_names):
 
@@ -519,6 +514,7 @@ class AudioFeatureExtractor:
 
 def main():
 
+    # Initialize audio feature extractor
     extractor = AudioFeatureExtractor(
         target_sr=22050, frame_size=2048, hop_ratio=0.5, ignore_last_seconds=1.0
     )
@@ -527,15 +523,20 @@ def main():
     training_folder_path = "./micro_medlydb/validate/"
     test_folder_path = "./micro_medlydb/test/"
 
-    # Z-Score Normalization
-    training_features, training_labels, training_filenames = extractor.extract_dataset_features(
-        training_folder_path
-    )
+    # Extract training features and labels
+    training_features, training_labels, training_filenames = extractor.extract_dataset_features(training_folder_path)
 
-    test_features, test_labels, test_filenames = extractor.extract_dataset_features(
-        test_folder_path
-    )
+    # Extract test features and labels
+    test_features, test_labels, test_filenames = extractor.extract_dataset_features(test_folder_path)
 
+    # Print training feature matrix
+    print("\n=== Training Feature Matrix ===\n")
+    pd.set_option("display.width", 200)
+    pd.set_option("display.max_columns", None)
+    # rows = files, columns = features
+    print(pd.DataFrame(training_features).round(5).to_string(index=False, header=False))
+
+    # Feature names
     feature_names = [
         "spectral_centroid",
         "spectral_spread",
@@ -547,14 +548,12 @@ def main():
     for i in range(10):
         feature_names.append(f"mfcc_{i}")
 
-    print("\n=== Feature Matrix ===\n")
+    # Prints correlation matrix and finds least and most correlated features. 
+    # ** Close plot to continue script. **
+    extractor.compute_correlation_matrix(training_features, feature_names)
 
-    pd.set_option("display.width", 200)
-    pd.set_option("display.max_columns", None)
-
-    print(pd.DataFrame(training_features).round(5).to_string(index=False, header=False))
-
-    corr_matrix = extractor.compute_correlation_matrix(training_features, feature_names)
+    # KNN Classifier
+    print("\n=== KNN Classifier ===\n")
 
     # Use GridSearchCV to find the best k value for the KNN classifier
     k_range = list(range(1, 21))
