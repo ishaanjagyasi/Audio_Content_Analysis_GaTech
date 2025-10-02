@@ -19,7 +19,7 @@ class AudioFeatureExtractor:
         self.hop_size = int(hop_ratio * frame_size)
         self.ignore_last_seconds = ignore_last_seconds
 
-    ########################### PREPROCESSING ###############################
+########################### PREPROCESSING ###############################
 
     def preprocess_audio(self, audio_path):
         sr, audio = wavfile.read(audio_path)
@@ -50,9 +50,9 @@ class AudioFeatureExtractor:
 
         return audio
 
-    ######################## FEATURE COMPUTATION FUNCTIONS ###################################
+######################## FEATURE COMPUTATION FUNCTIONS ###################################
 
-    ######################################### STFT #########################################
+######################################### STFT #########################################
 
     def compute_stft(self, audio):
         # Get audio blocks
@@ -81,7 +81,7 @@ class AudioFeatureExtractor:
 
         return magnitude_spectrum, freqs, times
 
-    ######################################### SPECTRAL CENTROID #########################################
+######################################### SPECTRAL CENTROID #########################################
 
     def spectral_centroid(self, magnitude_spectrum, freqs):
         # Avoid division by zero for silent frames
@@ -94,7 +94,7 @@ class AudioFeatureExtractor:
         )
         return centroids
 
-    ######################################### SPECTRAL SPREAD #########################################
+######################################### SPECTRAL SPREAD #########################################
 
     def spectral_spread(self, magnitude_spectrum, freqs, centroids):
         total_energy = np.sum(magnitude_spectrum, axis=1)
@@ -111,7 +111,7 @@ class AudioFeatureExtractor:
 
         return np.array(spreads)
 
-    ######################################### SPECTRAL FLUX #########################################
+######################################### SPECTRAL FLUX #########################################
 
     def spectral_flux(self, magnitude_spectrum):
 
@@ -133,7 +133,7 @@ class AudioFeatureExtractor:
 
         return flux
 
-    ######################################### SPECTRAL ROLLOFF #########################################
+######################################### SPECTRAL ROLLOFF #########################################
 
     def spectral_rolloff(self, magnitude_spectrum, freqs, percentile=0.85):
 
@@ -158,7 +158,7 @@ class AudioFeatureExtractor:
 
         return rolloff
 
-    ######################################### SPECTRAL FLATNESS #########################################
+######################################### SPECTRAL FLATNESS #########################################
 
     def spectral_flatness(self, magnitude_spectrum):
 
@@ -179,7 +179,7 @@ class AudioFeatureExtractor:
 
         return flatness
 
-    ######################################### ZERO CROSSING RATE #########################################
+######################################### ZERO CROSSING RATE #########################################
 
     def zero_crossing_rate(self, audio):
 
@@ -203,7 +203,7 @@ class AudioFeatureExtractor:
 
         return zcr
 
-    ################################ MEL FILTERBANK CALCULATION ###################################
+################################ MEL FILTERBANK CALCULATION ###################################
 
     def mel_filterbank(self, n_filters=13, fmin=0, fmax=None):
         if fmax is None:
@@ -249,7 +249,7 @@ class AudioFeatureExtractor:
 
         return filterbank
 
-    ######################################### MFCC EXTRACTION #########################################
+######################################### MFCC EXTRACTION #########################################
 
     def compute_mfcc(self, magnitude_spectrum, n_mfcc=13):
         # Get mel filterbank
@@ -271,7 +271,7 @@ class AudioFeatureExtractor:
 
         return mfcc
 
-    ######################################### APPLY CMVN TO MFCCS #########################################
+######################################### APPLY CMVN TO MFCCS #########################################
 
     def apply_cmvn(self, mfcc):
 
@@ -287,7 +287,7 @@ class AudioFeatureExtractor:
 
         return mfcc_normalized
 
-    ######################################### EXTRACT FEATURES #########################################
+######################################### EXTRACT FEATURES #########################################
 
     def extract_features(self, audio_path):
 
@@ -336,6 +336,8 @@ class AudioFeatureExtractor:
 
         return np.array(feature_vector)  # Return as numpy array (16 values total)
 
+######################################### NORMALIZE ACROSS FEATURES #########################################
+
     def normalize_across_features(self, feature_matrix):
 
         normalized = np.zeros_like(feature_matrix)
@@ -351,7 +353,8 @@ class AudioFeatureExtractor:
 
         return normalized
 
-    ######################################### EXTRACT DATASET LABELS #########################################
+
+######################################### EXTRACT DATASET LABELS #########################################
 
     def extract_dataset_features(self, folder_path):  # GENERATED WITH CLAUDE
 
@@ -410,119 +413,116 @@ class AudioFeatureExtractor:
             return normalized_matrix, all_labels, all_filenames
         else:
             return None, None, None
+        
+    
+    
+######################################### COMPUTE CORRELATION MATRIX #########################################
+
+    def compute_correlation_matrix(self, normalized_matrix, feature_names):
+
+        # Calculate correlation matrix
+        corr_matrix = np.corrcoef(normalized_matrix.T)
+
+        # print the correlation matrix
+        print("\n=== CORRELATION MATRIX ===\n")
+
+        print("-" * 130)
+
+        non_mfcc_indices = [
+            i for i, name in enumerate(feature_names) if not name.startswith("mfcc_")
+        ]
+        non_mfcc_names = [feature_names[i] for i in non_mfcc_indices]
+        # Extract columns for non-MFCC features, but keep all rows
+        submatrix = corr_matrix[:, non_mfcc_indices]
+        rows = [name if i < 6 else f"mfcc_{i-6}" for i, name in enumerate(feature_names)]
+
+        df = pd.DataFrame(submatrix, index=rows, columns=non_mfcc_names).round(3)
+
+        print(df.to_string())
+
+        print("-" * 130)
+
+        # Find and print highest and lowest correlations
+        n_features = len(feature_names)
+        correlations = []
+
+        for i in range(n_features):
+            for j in range(i + 1, n_features):
+                if j in range(i + 1, n_features):
+                    is_i_mfcc = feature_names[i].startswith("mfcc_")
+                    is_j_mfcc = feature_names[j].startswith("mfcc_")
+                    if is_i_mfcc and is_j_mfcc:
+                        continue
+                correlations.append(
+                    {
+                        "feature1": feature_names[i],
+                        "feature2": feature_names[j],
+                        "idx1": i,  # to store the index of the first and second feature that are being compared
+                        "idx2": j,
+                        "correlation": corr_matrix[i, j],
+                    }
+                )
+
+        # Sort by absolute values of correlation in descending order
+        correlations_sorted = sorted(
+            correlations, key=lambda x: abs(x["correlation"]), reverse=True
+        )
+
+        print("\n=== TOP 5 HIGHEST CORRELATIONS ===\n")
+        for i in range(min(5, len(correlations_sorted))):
+            item = correlations_sorted[i]
+            print(
+                f"{item['feature1']:<20} vs {item['feature2']:<15} : {item['correlation']:7.4f}"
+            )
+
+        print("\n=== TOP 5 LOWEST CORRELATIONS ===\n")
+        for i in range(max(0, len(correlations_sorted) - 5), len(correlations_sorted)):
+            item = correlations_sorted[i]
+            print(
+                f"{item['feature1']:<20} vs {item['feature2']:<15} : {item['correlation']:7.4f}"
+            )
+
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+        highest = correlations_sorted[
+            0
+        ]  # store the pair of features with the highest correlation
+        axes[0].scatter(
+            normalized_matrix[:, highest["idx1"]],
+            normalized_matrix[:, highest["idx2"]],
+            alpha=0.6,
+            s=50,
+        )
+        axes[0].set_xlabel(highest["feature1"])
+        axes[0].set_ylabel(highest["feature2"])
+        axes[0].set_title(f"Highest Correlation: {highest['correlation']:.4f}")
+        axes[0].grid(True, alpha=0.3)
+
+        lowest = correlations_sorted[
+            -1
+        ]  # store the pair of features with the lowest correlation
+        axes[1].scatter(
+            normalized_matrix[:, lowest["idx1"]],
+            normalized_matrix[:, lowest["idx2"]],
+            alpha=0.6,
+            s=50,
+            color="orange",
+        )
+        axes[1].set_xlabel(lowest["feature1"])
+        axes[1].set_ylabel(lowest["feature2"])
+        axes[1].set_title(f"Lowest Correlation: {lowest['correlation']:.4f}")
+        axes[1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.savefig("correlation_extremes.png", dpi=300, bbox_inches="tight")
+        plt.show()
+
+        return corr_matrix
 
 
 ######################################### END OF AUDIO FEATURE EXTRACTION FUNCTIONS ##########################
 
 # =============================================================================================================
-
-######################################### COMPUTE CORRELATION MATRIX #########################################
-
-
-def compute_correlation_matrix(feature_matrix, feature_names):
-
-    # Calculate correlation matrix
-    corr_matrix = np.corrcoef(feature_matrix.T)
-
-    # print the correlation matrix
-    print("\n=== CORRELATION MATRIX ===\n")
-
-    print("-" * 130)
-
-    non_mfcc_indices = [
-        i for i, name in enumerate(feature_names) if not name.startswith("mfcc_")
-    ]
-    non_mfcc_names = [feature_names[i] for i in non_mfcc_indices]
-    # Extract columns for non-MFCC features, but keep all rows
-    submatrix = corr_matrix[:, non_mfcc_indices]
-    rows = [name if i < 6 else f"mfcc_{i-6}" for i, name in enumerate(feature_names)]
-
-    df = pd.DataFrame(submatrix, index=rows, columns=non_mfcc_names).round(3)
-
-    print(df.to_string())
-
-    print("-" * 130)
-
-    # Find and print highest and lowest correlations
-    n_features = len(feature_names)
-    correlations = []
-
-    for i in range(n_features):
-        for j in range(i + 1, n_features):
-            if j in range(i + 1, n_features):
-                is_i_mfcc = feature_names[i].startswith("mfcc_")
-                is_j_mfcc = feature_names[j].startswith("mfcc_")
-                if is_i_mfcc and is_j_mfcc:
-                    continue
-            correlations.append(
-                {
-                    "feature1": feature_names[i],
-                    "feature2": feature_names[j],
-                    "idx1": i,  # to store the index of the first and second feature that are being compared
-                    "idx2": j,
-                    "correlation": corr_matrix[i, j],
-                }
-            )
-
-    # Sort by absolute values of correlation in descending order
-    correlations_sorted = sorted(
-        correlations, key=lambda x: abs(x["correlation"]), reverse=True
-    )
-
-    print("\n=== TOP 5 HIGHEST CORRELATIONS ===\n")
-    for i in range(min(5, len(correlations_sorted))):
-        item = correlations_sorted[i]
-        print(
-            f"{item['feature1']:<20} vs {item['feature2']:<15} : {item['correlation']:7.4f}"
-        )
-
-    print("\n=== TOP 5 LOWEST CORRELATIONS ===\n")
-    for i in range(max(0, len(correlations_sorted) - 5), len(correlations_sorted)):
-        item = correlations_sorted[i]
-        print(
-            f"{item['feature1']:<20} vs {item['feature2']:<15} : {item['correlation']:7.4f}"
-        )
-
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-    highest = correlations_sorted[
-        0
-    ]  # store the pair of features with the highest correlation
-    axes[0].scatter(
-        feature_matrix[:, highest["idx1"]],
-        feature_matrix[:, highest["idx2"]],
-        alpha=0.6,
-        s=50,
-    )
-    axes[0].set_xlabel(highest["feature1"])
-    axes[0].set_ylabel(highest["feature2"])
-    axes[0].set_title(f"Highest Correlation: {highest['correlation']:.4f}")
-    axes[0].grid(True, alpha=0.3)
-
-    lowest = correlations_sorted[
-        -1
-    ]  # store the pair of features with the lowest correlation
-    axes[1].scatter(
-        feature_matrix[:, lowest["idx1"]],
-        feature_matrix[:, lowest["idx2"]],
-        alpha=0.6,
-        s=50,
-        color="orange",
-    )
-    axes[1].set_xlabel(lowest["feature1"])
-    axes[1].set_ylabel(lowest["feature2"])
-    axes[1].set_title(f"Lowest Correlation: {lowest['correlation']:.4f}")
-    axes[1].grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig("correlation_extremes.png", dpi=300, bbox_inches="tight")
-    plt.show()
-
-    return corr_matrix
-
-
-# =============================================================================================================
-
 
 def main():
 
@@ -555,7 +555,7 @@ def main():
 
     print(pd.DataFrame(normalized_matrix).round(5).to_string(index=False, header=False))
 
-    corr_matrix = compute_correlation_matrix(normalized_matrix, feature_names)
+    corr_matrix = extractor.compute_correlation_matrix(normalized_matrix, feature_names)
 
     return normalized_matrix, feature_names, filenames, corr_matrix
 
