@@ -312,22 +312,14 @@ class AudioFeatureExtractor:
         # Keep only first 10 MFCC coefficients
         mfcc_cmvn = mfcc_cmvn[:, :10]
 
-        # Apply z-score normalization to each feature
-        centroids_norm = (centroids - np.mean(centroids)) / (np.std(centroids) + 1e-10)
-        spreads_norm = (spreads - np.mean(spreads)) / (np.std(spreads) + 1e-10)
-        rolloff_norm = (rolloff - np.mean(rolloff)) / (np.std(rolloff) + 1e-10)
-        flatness_norm = (flatness - np.mean(flatness)) / (np.std(flatness) + 1e-10)
-        flux_norm = (flux - np.mean(flux)) / (np.std(flux) + 1e-10)
-        zcr_norm = (zcr - np.mean(zcr)) / (np.std(zcr) + 1e-10)
-
         # AGGREGATE: Take mean of each feature (single value per feature)
         feature_vector = [
-            np.mean(centroids_norm),  # 1. Spectral centroid
-            np.mean(spreads_norm),  # 2. Spectral spread
-            np.mean(rolloff_norm),  # 3. Spectral rolloff
-            np.mean(flatness_norm),  # 4. Spectral flatness
-            np.mean(zcr_norm),  # 5. Zero crossing rate
-            np.mean(flux_norm),  # 6. Spectral flux
+            np.mean(centroids),  # 1. Spectral centroid
+            np.mean(spreads),  # 2. Spectral spread
+            np.mean(rolloff),  # 3. Spectral rolloff
+            np.mean(flatness),  # 4. Spectral flatness
+            np.mean(zcr),  # 5. Zero crossing rate
+            np.mean(flux),  # 6. Spectral flux
         ]
 
         # Add mean of first 10 MFCC coefficients (7-16)
