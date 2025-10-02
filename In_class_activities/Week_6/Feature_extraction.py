@@ -7,8 +7,9 @@ import os
 import math
 import pandas as pd
 from audio_blocking_reference import block_audio
-
-
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 class AudioFeatureExtractor:
     def __init__(
         self, target_sr=22050, frame_size=2048, hop_ratio=0.5, ignore_last_seconds=1.0
@@ -522,12 +523,18 @@ def main():
         target_sr=22050, frame_size=2048, hop_ratio=0.5, ignore_last_seconds=1.0
     )
 
-    folder_path = "./micro_medlydb/validate/"
+    # Paths to training and test datasets
+    training_folder_path = "./micro_medlydb/validate/"
+    test_folder_path = "./micro_medlydb/test/"
 
     # Z-Score Normalization
-    normalized_matrix, labels, filenames = extractor.extract_dataset_features(
-        folder_path
-    )  # Correct - this extracts features AND normalizes
+    training_features, training_labels, training_filenames = extractor.extract_dataset_features(
+        training_folder_path
+    )
+
+    test_features, test_labels, test_filenames = extractor.extract_dataset_features(
+        test_folder_path
+    )
 
     feature_names = [
         "spectral_centroid",
@@ -545,12 +552,28 @@ def main():
     pd.set_option("display.width", 200)
     pd.set_option("display.max_columns", None)
 
-    print(pd.DataFrame(normalized_matrix).round(5).to_string(index=False, header=False))
+    print(pd.DataFrame(training_features).round(5).to_string(index=False, header=False))
 
-    corr_matrix = extractor.compute_correlation_matrix(normalized_matrix, feature_names)
+    corr_matrix = extractor.compute_correlation_matrix(training_features, feature_names)
 
-    return normalized_matrix, feature_names, filenames, corr_matrix
+    # Use GridSearchCV to find the best k value for the KNN classifier
+    k_range = list(range(1, 21))
+    param_grid = dict(n_neighbors=k_range)
+    grid = GridSearchCV(KNeighborsClassifier(), param_grid, cv=5, scoring='accuracy')
+    grid.fit(training_features, training_labels)
+    best_k = grid.best_params_['n_neighbors']
+    print(f"Optimal K: {best_k}")
+    print(f"Cross-Validation Accuracy with Optimal K: {grid.best_score_:.4f}")
 
+    # Use the best k value to train the KNN classifier
+    knn = KNeighborsClassifier(n_neighbors=best_k)
+    knn.fit(training_features, training_labels)
+    predictions = knn.predict(test_features)
+    print(f"Predictions: {predictions}")
+    print(f"Test Labels: {test_labels}")
+    print(f"Accuracy: {accuracy_score(test_labels, predictions)}")
+    print(f"Confusion Matrix: \n {confusion_matrix(test_labels, predictions)}")
+    print(f"Classification Report: \n {classification_report(test_labels, predictions)}")
 
 if __name__ == "__main__":
     main()
