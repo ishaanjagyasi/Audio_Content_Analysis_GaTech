@@ -312,20 +312,28 @@ class AudioFeatureExtractor:
         mfcc_cmvn = mfcc_cmvn[:, :10]
 
         # AGGREGATE: Take mean of each feature (single value per feature)
+        # Include standard deviation for each feature for more information
         feature_vector = [
-            np.mean(centroids),  # 1. Spectral centroid
-            np.mean(spreads),  # 2. Spectral spread
-            np.mean(rolloff),  # 3. Spectral rolloff
-            np.mean(flatness),  # 4. Spectral flatness
-            np.mean(zcr),  # 5. Zero crossing rate
-            np.mean(flux),  # 6. Spectral flux
+            np.mean(centroids),      # 1. Spectral centroid mean
+            np.std(centroids),       # 2. Spectral centroid std
+            np.mean(spreads),        # 3. Spectral spread mean
+            np.std(spreads),         # 4. Spectral spread std
+            np.mean(rolloff),        # 5. Spectral rolloff mean
+            np.std(rolloff),         # 6. Spectral rolloff std
+            np.mean(flatness),       # 7. Spectral flatness mean
+            np.std(flatness),        # 8. Spectral flatness std
+            np.mean(zcr),            # 9. Zero crossing rate mean
+            np.std(zcr),             # 10. Zero crossing rate std
+            np.mean(flux),           # 11. Spectral flux mean
+            np.std(flux),            # 12. Spectral flux std
         ]
 
-        # Add mean of first 10 MFCC coefficients (7-16)
+        # Add MFCC features (mean and std of first 10 coefficients)
         for i in range(10):
-            feature_vector.append(np.mean(mfcc_cmvn[:, i]))
+            feature_vector.append(np.mean(mfcc[:, i]))  # MFCC mean
+            feature_vector.append(np.std(mfcc[:, i]))   # MFCC std
 
-        return np.array(feature_vector)  # Return as numpy array (16 values total)
+        return np.array(feature_vector)  # Return as numpy array (32 values total)
 
 ######################################### NORMALIZE ACROSS FEATURES #########################################
 
@@ -538,15 +546,15 @@ def main():
 
     # Feature names
     feature_names = [
-        "spectral_centroid",
-        "spectral_spread",
-        "spectral_rolloff",
-        "spectral_flatness",
-        "zero_crossing_rate",
-        "spectral_flux",
+        "spectral_centroid_mean", "spectral_centroid_std",
+        "spectral_spread_mean", "spectral_spread_std", 
+        "spectral_rolloff_mean", "spectral_rolloff_std",
+        "spectral_flatness_mean", "spectral_flatness_std",
+        "zero_crossing_rate_mean", "zero_crossing_rate_std",
+        "spectral_flux_mean", "spectral_flux_std"
     ]
     for i in range(10):
-        feature_names.append(f"mfcc_{i}")
+        feature_names.extend([f"mfcc_{i}_mean", f"mfcc_{i}_std"])
 
     # Prints correlation matrix and finds least and most correlated features. 
     # ** Close plot to continue script. **
